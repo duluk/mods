@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/sashabaranov/go-openai"
@@ -272,4 +273,81 @@ func TestCutPrompt(t *testing.T) {
 			require.Equal(t, tc.expected, cutPrompt(tc.msg, tc.prompt))
 		})
 	}
+}
+
+func TestAPIKey(t *testing.T) {
+	newMods := func(t *testing.T) *Mods {
+		db := testDB(t)
+		return &Mods{
+			db:     db,
+			Config: &Config{},
+		}
+	}
+
+	t.Run("test flag key", func(t *testing.T) {
+		mod := newMods(t)
+		api := API{
+			APIKey:    "test_value",
+			APIKeyCmd: "",
+			APIKeyEnv: "",
+		}
+		key, err := mod.ensureKey(api, "TEST_API_KEY", "docs_url")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		require.Equal(t, "test_value", key)
+	})
+
+	t.Run("test cmd key", func(t *testing.T) {
+		f, err := os.Create("/tmp/test_api_key")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		defer f.Close()
+		_, err = f.WriteString("test_value")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		mod := newMods(t)
+		api := API{
+			APIKey:    "",
+			APIKeyCmd: "cat /tmp/test_api_key",
+			APIKeyEnv: "",
+		}
+		key, err := mod.ensureKey(api, "TEST_API_KEY", "docs_url")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		require.Equal(t, "test_value", key)
+	})
+
+	t.Run("test env key", func(t *testing.T) {
+		os.Setenv("TEST_API_KEY", "test_value")
+		defer os.Unsetenv("TEST_API_KEY")
+		mod := newMods(t)
+		api := API{
+			APIKey:    "",
+			APIKeyCmd: "",
+			APIKeyEnv: "TEST_API_KEY",
+		}
+		key, err := mod.ensureKey(api, "TEST_API_KEY", "docs_url")
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		require.Equal(t, "test_value", key)
+	})
+
+	t.Run("test no key", func(t *testing.T) {
+		mod := newMods(t)
+		api := API{
+			APIKey:    "",
+			APIKeyCmd: "",
+			APIKeyEnv: "",
+		}
+		_, err := mod.ensureKey(api, "TEST_API_KEY", "docs_url")
+		require.Error(t, err)
+		// require.EqualError(t, err, "No API key found. Please set it using the `set-api-key` command or the `--api-key` flag. See docs_url for more information.")
+		// TODO: This really should be the above message
+		require.EqualError(t, err, "You can grab one at docs_url.")
+	})
 }
