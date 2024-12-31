@@ -261,6 +261,21 @@ func (c *convoDB) Find(in string) (*Conversation, error) {
 	return nil, errNoMatches
 }
 
+func (c *convoDB) Search(in string) ([]Conversation, error) {
+	var convos []Conversation
+	if err := c.db.Select(&convos, c.db.Rebind(`
+		SELECT
+		  *
+		FROM
+		  conversations
+		WHERE
+		  title glob ?
+	`), "*"+in+"*"); err != nil {
+		return nil, fmt.Errorf("Search: %w", err)
+	}
+	return convos, nil
+}
+
 func (c *convoDB) List() ([]Conversation, error) {
 	var convos []Conversation
 	if err := c.db.Select(&convos, `
