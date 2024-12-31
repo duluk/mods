@@ -64,6 +64,7 @@ var help = map[string]string{
 	"no-cache":          "Disables caching of the prompt/response.",
 	"title":             "Saves the current conversation with the given title.",
 	"list":              "Lists saved conversations.",
+	"search":            "Searches for a saved conversation with the given title or ID.",
 	"delete":            "Deletes a saved conversation with the given title or ID.",
 	"delete-older-than": "Deletes all saved conversations older than the specified duration. Valid units are: " + strings.EnglishJoin(duration.ValidUnits(), true) + ".",
 	"show":              "Show a saved conversation with the given title or ID.",
@@ -175,6 +176,7 @@ type Config struct {
 	Show              string
 	List              bool
 	ListRoles         bool
+	Search            string
 	Delete            string
 	DeleteOlderThan   time.Duration
 	User              string

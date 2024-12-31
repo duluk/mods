@@ -184,6 +184,10 @@ var (
 				return listConversations()
 			}
 
+			if config.Search != "" {
+				return searchConversations()
+			}
+
 			if config.Delete != "" {
 				return deleteConversation()
 			}
@@ -255,6 +259,7 @@ func initFlags() {
 	flags.StringVarP(&config.Role, "role", "R", config.Role, stdoutStyles().FlagDesc.Render(help["role"]))
 	flags.BoolVar(&config.ListRoles, "list-roles", config.ListRoles, stdoutStyles().FlagDesc.Render(help["list-roles"]))
 	flags.StringVar(&config.Theme, "theme", "charm", stdoutStyles().FlagDesc.Render(help["theme"]))
+	flags.StringVar(&config.Search, "search", config.Search, stdoutStyles().FlagDesc.Render(help["search"]))
 	flags.Lookup("prompt").NoOptDefVal = "-1"
 	flags.SortFlags = false
 
@@ -290,6 +295,7 @@ func initFlags() {
 		"delete",
 		"delete-older-than",
 		"list",
+		"search",
 		"continue",
 		"continue-last",
 		"reset-settings",
@@ -557,6 +563,25 @@ func deleteConversation() error {
 	return nil
 }
 
+func searchConversations() error {
+	conversations, err := db.Search(config.Search)
+	if err != nil {
+		return modsError{err, "Couldn't search saves."}
+	}
+
+	if len(conversations) == 0 {
+		fmt.Fprintln(os.Stderr, "No conversations found.")
+		return nil
+	}
+
+	if isInputTTY() && isOutputTTY() {
+		selectFromList(conversations)
+		return nil
+	}
+	printList(conversations)
+	return nil
+}
+
 func listConversations() error {
 	conversations, err := db.List()
 	if err != nil {
@@ -717,6 +742,7 @@ func isNoArgs() bool {
 		!config.ShowHelp &&
 		!config.List &&
 		!config.ListRoles &&
+		config.Search == "" &&
 		!config.Dirs &&
 		!config.Settings &&
 		!config.ResetSettings
