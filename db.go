@@ -270,6 +270,8 @@ func (c *convoDB) Search(in string) ([]Conversation, error) {
 		  conversations
 		WHERE
 		  title glob ?
+		ORDER BY
+		  updated_at DESC
 	`), "*"+in+"*"); err != nil {
 		return nil, fmt.Errorf("Search: %w", err)
 	}
