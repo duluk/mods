@@ -126,6 +126,26 @@ func TestConvoDB(t *testing.T) {
 		require.ErrorIs(t, err, errManyMatches)
 	})
 
+	t.Run("search empty", func(t *testing.T) {
+		db := testDB(t)
+
+		list, err := db.Search("message")
+		require.NoError(t, err)
+		require.Empty(t, list)
+	})
+
+	t.Run("search conversations", func(t *testing.T) {
+		db := testDB(t)
+
+		require.NoError(t, db.Save(testid, "message 1", "gpt-4o"))
+		require.NoError(t, db.Save(newConversationID(), "message 2", "gpt-4o"))
+		require.NoError(t, db.Save(newConversationID(), "msg 3", "gpt-4o"))
+
+		list, err := db.Search("message")
+		require.NoError(t, err)
+		require.Len(t, list, 2)
+	})
+
 	t.Run("delete", func(t *testing.T) {
 		db := testDB(t)
 
