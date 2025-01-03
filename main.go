@@ -92,128 +92,154 @@ var (
 				config.Quiet = true
 			}
 
-			if (isNoArgs() || config.AskModel) && isInputTTY() {
-				if err := askInfo(); err != nil && err == huh.ErrUserAborted {
-					return modsError{
-						err:    err,
-						reason: "User canceled.",
-					}
-				} else if err != nil {
-					return modsError{
-						err:    err,
-						reason: "Prompt failed.",
-					}
-				}
-			}
-
-			mods := newMods(stderrRenderer(), &config, db, cache)
-			p := tea.NewProgram(mods, opts...)
-			m, err := p.Run()
-			if err != nil {
-				return modsError{err, "Couldn't start Bubble Tea program."}
-			}
-
-			mods = m.(*Mods)
-			if mods.Error != nil {
-				return *mods.Error
-			}
-
-			if config.Dirs {
-				if len(args) > 0 {
-					switch args[0] {
-					case "config":
-						fmt.Println(filepath.Dir(config.SettingsPath))
-						return nil
-					case "cache":
-						fmt.Println(filepath.Dir(config.CachePath))
-						return nil
+			for {
+				if (isNoArgs() || config.AskModel) && isInputTTY() {
+					if err := askInfo(); err != nil && err == huh.ErrUserAborted {
+						return modsError{
+							err:    err,
+							reason: "User canceled.",
+						}
+					} else if err != nil {
+						return modsError{
+							err:    err,
+							reason: "Prompt failed.",
+						}
 					}
 				}
-				fmt.Printf("Configuration: %s\n", filepath.Dir(config.SettingsPath))
-				//nolint:mnd
-				fmt.Printf("%*sCache: %s\n", 8, " ", filepath.Dir(config.CachePath))
-				return nil
-			}
 
-			if config.Settings {
-				c, err := editor.Cmd("mods", config.SettingsPath)
+				mods := newMods(stderrRenderer(), &config, db, cache)
+				p := tea.NewProgram(mods, opts...)
+				m, err := p.Run()
 				if err != nil {
+					return modsError{err, "Couldn't start Bubble Tea program."}
+				}
+
+				mods = m.(*Mods)
+				if mods.Error != nil {
+					return *mods.Error
+				}
+
+				if config.Dirs {
+					if len(args) > 0 {
+						switch args[0] {
+						case "config":
+							fmt.Println(filepath.Dir(config.SettingsPath))
+							return nil
+						case "cache":
+							fmt.Println(filepath.Dir(config.CachePath))
+							return nil
+						}
+					}
+					fmt.Printf("Configuration: %s\n", filepath.Dir(config.SettingsPath))
+					//nolint:mnd
+					fmt.Printf("%*sCache: %s\n", 8, " ", filepath.Dir(config.CachePath))
+					return nil
+				}
+
+				if config.Settings {
+					c, err := editor.Cmd("mods", config.SettingsPath)
+					if err != nil {
+						return modsError{
+							err:    err,
+							reason: "Could not edit your settings file.",
+						}
+					}
+					c.Stdin = os.Stdin
+					c.Stdout = os.Stdout
+					c.Stderr = os.Stderr
+					if err := c.Run(); err != nil {
+						return modsError{err, fmt.Sprintf(
+							"Missing %s.",
+							stderrStyles().InlineCode.Render("$EDITOR"),
+						)}
+					}
+
+					if !config.Quiet {
+						fmt.Fprintln(os.Stderr, "Wrote config file to:", config.SettingsPath)
+					}
+					return nil
+				}
+
+				if config.ResetSettings {
+					return resetSettings()
+				}
+
+				if mods.Input == "" && isNoArgs() {
 					return modsError{
-						err:    err,
-						reason: "Could not edit your settings file.",
+						reason: "You haven't provided any prompt input.",
+						err: newUserErrorf(
+							"You can give your prompt as arguments and/or pipe it from STDIN. \nExample: %s",
+							stdoutStyles().InlineCode.Render("mods [prompt]"),
+						),
 					}
 				}
-				c.Stdin = os.Stdin
-				c.Stdout = os.Stdout
-				c.Stderr = os.Stderr
-				if err := c.Run(); err != nil {
-					return modsError{err, fmt.Sprintf(
-						"Missing %s.",
-						stderrStyles().InlineCode.Render("$EDITOR"),
-					)}
+
+				if config.ShowHelp {
+					return cmd.Usage()
 				}
 
-				if !config.Quiet {
-					fmt.Fprintln(os.Stderr, "Wrote config file to:", config.SettingsPath)
+				if config.ListRoles {
+					return listRoles()
 				}
-				return nil
-			}
+				if config.List {
+					return listConversations()
+				}
 
-			if config.ResetSettings {
-				return resetSettings()
-			}
+				if config.Search != "" {
+					return searchConversations()
+				}
 
-			if mods.Input == "" && isNoArgs() {
-				return modsError{
-					reason: "You haven't provided any prompt input.",
-					err: newUserErrorf(
-						"You can give your prompt as arguments and/or pipe it from STDIN.\nExample: %s",
-						stdoutStyles().InlineCode.Render("mods [prompt]"),
-					),
+				if config.Delete != "" {
+					return deleteConversation()
+				}
+
+				if config.DeleteOlderThan > 0 {
+					return deleteConversationOlderThan()
+				}
+
+				if isOutputTTY() {
+					switch {
+					case mods.glamOutput != "":
+						fmt.Print(mods.glamOutput)
+					case mods.Output != "":
+						fmt.Print(mods.Output)
+					}
+				}
+
+				if config.Show != "" || config.ShowLast {
+					return nil
+				}
+
+				if config.cacheWriteToID != "" {
+					if err := saveConversation(mods); err != nil {
+						return err
+					}
+				}
+
+				config.Prefix = ""
+				if mods.state == doneState {
+					// If a prompt was provided on the CLI, we're done
+					if len(args) > 0 {
+						return nil
+					}
+
+					// At this point, were continuing so reset everything and set
+					// ContinueLast to true, which will pick up the previous chat
+					// information as context.
+					// TODO: should all of these should be reset?
+					config.Prefix = ""
+					config.AskModel = false
+					config.Continue = ""
+					config.ContinueLast = true
+					config.Show = ""
+					config.ShowLast = false
+					config.Delete = ""
+					config.Search = ""
+					config.cacheWriteToID = ""
+					config.cacheWriteToTitle = ""
+					config.DeleteOlderThan = 0
 				}
 			}
-
-			if config.ShowHelp {
-				return cmd.Usage()
-			}
-
-			if config.ListRoles {
-				return listRoles()
-			}
-			if config.List {
-				return listConversations()
-			}
-
-			if config.Search != "" {
-				return searchConversations()
-			}
-
-			if config.Delete != "" {
-				return deleteConversation()
-			}
-
-			if config.DeleteOlderThan > 0 {
-				return deleteConversationOlderThan()
-			}
-
-			if isOutputTTY() {
-				switch {
-				case mods.glamOutput != "":
-					fmt.Print(mods.glamOutput)
-				case mods.Output != "":
-					fmt.Print(mods.Output)
-				}
-			}
-
-			if config.Show != "" || config.ShowLast {
-				return nil
-			}
-
-			if config.cacheWriteToID != "" {
-				return saveConversation(mods)
-			}
-
-			return nil
 		},
 	}
 )
