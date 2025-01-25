@@ -130,7 +130,7 @@ func (m *Mods) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.quit
 		}
 		if m.Config.Dirs ||
-			m.Config.Delete != "" ||
+			len(m.Config.Delete) > 0 ||
 			m.Config.DeleteOlderThan != 0 ||
 			m.Config.ShowHelp ||
 			m.Config.List ||
@@ -280,7 +280,7 @@ func (m *Mods) startCompletionCmd(content string) tea.Cmd {
 					err: newUserErrorf(
 						"Please specify an API endpoint with %s or configure the model in the settings: %s",
 						m.Styles.InlineCode.Render("--api"),
-						m.Styles.InlineCode.Render("mods -s"),
+						m.Styles.InlineCode.Render("mods --settings"),
 					),
 				}
 			}
@@ -393,6 +393,14 @@ func (m *Mods) startCompletionCmd(content string) tea.Cmd {
 
 		if mod.MaxChars == 0 {
 			mod.MaxChars = cfg.MaxInputChars
+		}
+
+		// Check if the model is an o1 model and unset the max_tokens parameter
+		// accordingly, as it's unsupported by o1.
+		// We do set max_completion_tokens instead, which is supported.
+		// Release won't have a prefix with a dash, so just putting o1 for match.
+		if strings.HasPrefix(mod.Name, "o1") {
+			cfg.MaxTokens = 0
 		}
 
 		switch mod.API {

@@ -21,9 +21,22 @@ func (m *Mods) createOpenAIStream(content string, ccfg openai.ClientConfig, mod 
 		return err
 	}
 
+	// Remap system messages to user messages due to beta limitations
+	messages := []openai.ChatCompletionMessage{}
+	for _, message := range m.messages {
+		if message.Role == openai.ChatMessageRoleSystem {
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:    openai.ChatMessageRoleUser,
+				Content: message.Content,
+			})
+		} else {
+			messages = append(messages, message)
+		}
+	}
+
 	req := openai.ChatCompletionRequest{
 		Model:    mod.Name,
-		Messages: m.messages,
+		Messages: messages,
 		Stream:   true,
 		User:     cfg.User,
 	}
@@ -263,10 +276,10 @@ func (m *Mods) createCohereStream(content string, cccfg CohereClientConfig, mod 
 func (m *Mods) setupStreamContext(content string, mod Model) error {
 	cfg := m.Config
 	m.messages = []openai.ChatCompletionMessage{}
-	if cfg.Format {
+	if txt := cfg.FormatText[cfg.FormatAs]; cfg.Format && txt != "" {
 		m.messages = append(m.messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
-			Content: cfg.FormatText[cfg.FormatAs],
+			Content: txt,
 		})
 	}
 

@@ -182,22 +182,23 @@ var (
 					return listRoles()
 				}
 				if config.List {
-					return listConversations()
+					return listConversations(config.Raw)
 				}
 
 				if config.Search != "" {
 					return searchConversations()
 				}
 
-				if config.Delete != "" {
-					return deleteConversation()
+				if len(config.Delete) > 0 {
+					return deleteConversations()
 				}
 
 				if config.DeleteOlderThan > 0 {
 					return deleteConversationOlderThan()
 				}
 
-				if isOutputTTY() {
+				// raw mode already prints the output, no need to print it again
+				if isOutputTTY() && !config.Raw {
 					switch {
 					case mods.glamOutput != "":
 						fmt.Print(mods.glamOutput)
@@ -233,7 +234,7 @@ var (
 					config.ContinueLast = true
 					config.Show = ""
 					config.ShowLast = false
-					config.Delete = ""
+					config.Delete = nil
 					config.Search = ""
 					config.cacheWriteToID = ""
 					config.cacheWriteToTitle = ""
@@ -261,7 +262,7 @@ func initFlags() {
 	flags.BoolVarP(&config.ContinueLast, "continue-last", "C", false, stdoutStyles().FlagDesc.Render(help["continue-last"]))
 	flags.BoolVarP(&config.List, "list", "l", config.List, stdoutStyles().FlagDesc.Render(help["list"]))
 	flags.StringVarP(&config.Title, "title", "t", config.Title, stdoutStyles().FlagDesc.Render(help["title"]))
-	flags.StringVarP(&config.Delete, "delete", "d", config.Delete, stdoutStyles().FlagDesc.Render(help["delete"]))
+	flags.StringArrayVarP(&config.Delete, "delete", "d", config.Delete, stdoutStyles().FlagDesc.Render(help["delete"]))
 	flags.Var(newDurationFlag(config.DeleteOlderThan, &config.DeleteOlderThan), "delete-older-than", stdoutStyles().FlagDesc.Render(help["delete-older-than"]))
 	flags.StringVarP(&config.Show, "show", "s", config.Show, stdoutStyles().FlagDesc.Render(help["show"]))
 	flags.BoolVarP(&config.ShowLast, "show-last", "S", false, stdoutStyles().FlagDesc.Render(help["show-last"]))
@@ -342,7 +343,7 @@ func main() {
 	}
 
 	cache = newCache(config.CachePath)
-	db, err = openDB(filepath.Join(config.CachePath, "mods.db"))
+	db, err = openDB(filepath.Join(config.CachePath, "conversations", "mods.db"))
 	if err != nil {
 		handleError(modsError{err, "Could not open database."})
 		os.Exit(1)
@@ -569,12 +570,20 @@ func deleteConversationOlderThan() error {
 	return nil
 }
 
-func deleteConversation() error {
-	convo, err := db.Find(config.Delete)
-	if err != nil {
-		return modsError{err, "Couldn't find conversation to delete."}
+func deleteConversations() error {
+	for _, del := range config.Delete {
+		convo, err := db.Find(del)
+		if err != nil {
+			return modsError{err, "Couldn't find conversation to delete."}
+		}
+		if err := deleteConversation(convo); err != nil {
+			return err
+		}
 	}
+	return nil
+}
 
+func deleteConversation(convo *Conversation) error {
 	if err := db.Delete(convo.ID); err != nil {
 		return modsError{err, "Couldn't delete conversation."}
 	}
@@ -608,7 +617,7 @@ func searchConversations() error {
 	return nil
 }
 
-func listConversations() error {
+func listConversations(raw bool) error {
 	conversations, err := db.List()
 	if err != nil {
 		return modsError{err, "Couldn't list saves."}
@@ -619,7 +628,7 @@ func listConversations() error {
 		return nil
 	}
 
-	if isInputTTY() && isOutputTTY() {
+	if isInputTTY() && isOutputTTY() && !raw {
 		selectFromList(conversations)
 		return nil
 	}
@@ -763,7 +772,7 @@ func isNoArgs() bool {
 	return config.Prefix == "" &&
 		config.Show == "" &&
 		!config.ShowLast &&
-		config.Delete == "" &&
+		len(config.Delete) == 0 &&
 		config.DeleteOlderThan == 0 &&
 		!config.ShowHelp &&
 		!config.List &&

@@ -135,8 +135,8 @@ Check the [`./features.md`](./features.md) for more details.
 - `-m`, `--model`: Specify Large Language Model to use.
 - `-f`, `--format`: Ask the LLM to format the response in a given format.
 - `--format-as`: Specify the format for the output (used with `--format`).
-- `-P`, `--prompt`: Prompt should include stdin and args.
-- `-p`, `--prompt-args`: Prompt should only include args.
+- `-P`, `--prompt` Include the prompt from the arguments and stdin, truncate stdin to specified number of lines.
+- `-p`, `--prompt-args`: Include the prompt from the arguments in the response.
 - `-q`, `--quiet`: Only output errors to standard err.
 - `-r`, `--raw`: Print raw response without syntax highlighting.
 - `--settings`: Open settings.
@@ -157,7 +157,7 @@ Check the [`./features.md`](./features.md) for more details.
 - `-s`, `--show`: Show saved conversation for the given title or SHA-1.
 - `-S`, `--show-last`: Show previous conversation.
 - `--delete-older-than=<duration>`: Deletes conversations older than given duration (`10d`, `1mo`).
-- `--delete`: Deletes the saved conversation for the given title or SHA-1.
+- `--delete`: Deletes the saved conversations for the given titles or SHA-1s.
 - `--no-cache`: Do not save conversations.
 
 #### Advanced
