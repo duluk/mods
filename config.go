@@ -94,6 +94,11 @@ type API struct {
 	User      string           `yaml:"user"`
 }
 
+type Role struct {
+	Model       string   `yaml:"model"`
+	Description []string `yaml:"description"`
+}
+
 // APIs is a type alias to allow custom YAML decoding.
 type APIs []API
 
@@ -133,7 +138,7 @@ func (ft *FormatText) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 // Config holds the main configuration and is mapped to the YAML settings file.
 type Config struct {
-	Model               string     `yaml:"default-model" env:"MODEL"`
+	DefaultModel        string     `yaml:"default-model" env:"MODEL"`
 	Format              bool       `yaml:"format" env:"FORMAT"`
 	FormatText          FormatText `yaml:"format-text"`
 	FormatAs            string     `yaml:"format-as" env:"FORMAT_AS"`
@@ -161,8 +166,9 @@ type Config struct {
 	Role                string     `yaml:"role" env:"ROLE"`
 	AskModel            bool
 	API                 string
+	Model               string
 	Models              map[string]Model
-	Roles               map[string][]string
+	Roles               map[string]Role
 	ShowHelp            bool
 	ResetSettings       bool
 	Prefix              string
@@ -229,6 +235,12 @@ func ensureConfig() (Config, error) {
 		}
 	}
 	c.Models = ms
+
+	// The code originally set c.Model to the 'default-model' in the config,
+	// then set it to what the user selected or passed in on the CLI. I want to
+	// be able to distinguish between the default model and the model that ends
+	// up being set elsewhere, to determine if c.Model was set from the CLI.
+	c.Model = c.DefaultModel
 
 	if err := env.ParseWithOptions(&c, env.Options{Prefix: "MODS_"}); err != nil {
 		return c, modsError{err, "Could not parse environment into settings file."}
