@@ -291,7 +291,7 @@ func (m *Mods) setupStreamContext(content string, mod Model) error {
 				reason: "Could not use role",
 			}
 		}
-		for _, msg := range roleSetup {
+		for _, msg := range roleSetup.Description {
 			content, err := loadMsg(msg)
 			if err != nil {
 				return modsError{
