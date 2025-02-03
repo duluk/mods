@@ -94,6 +94,11 @@ type API struct {
 	User      string           `yaml:"user"`
 }
 
+type Role struct {
+	Model       string   `yaml:"model"`
+	Description []string `yaml:"description"`
+}
+
 // APIs is a type alias to allow custom YAML decoding.
 type APIs []API
 
@@ -161,8 +166,9 @@ type Config struct {
 	Role                string     `yaml:"role" env:"ROLE"`
 	AskModel            bool
 	API                 string
+	Model               string
 	Models              map[string]Model
-	Roles               map[string][]string
+	Roles               map[string]Role
 	ShowHelp            bool
 	ResetSettings       bool
 	Prefix              string
