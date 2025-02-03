@@ -124,6 +124,56 @@ func (c *convoCache) delete(id string) error {
 	return c.cache.Delete(id)
 }
 
+func (c *convoCache) Search(searchString string, gobDir string) ([]string, error) {
+	files, err := os.ReadDir(gobDir)
+	if err != nil {
+		return nil, fmt.Errorf("error reading %s: %w", gobDir, err)
+	}
+
+	var ids []string
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		var found bool
+		if filepath.Ext(file.Name()) == cacheExt {
+			fullPath := filepath.Join(gobDir, file.Name())
+			found, err = searchGob(fullPath, searchString)
+			if err != nil {
+				return nil, fmt.Errorf("error searching %s: %w", fullPath, err)
+			}
+
+			if found {
+				ids = append(ids, file.Name()[:len(file.Name())-len(cacheExt)])
+			}
+		}
+	}
+	return ids, nil
+}
+
+// All we need to know is whether the search string is present in the file, as
+// the filename (which the caller knows) is the DB ID
+func searchGob(file, searchString string) (bool, error) {
+	var conv []openai.ChatCompletionMessage
+	fd, err := os.Open(file)
+	if err != nil {
+		return false, fmt.Errorf("error opening %s: %w", file, err)
+	}
+
+	if err := decode(fd, &conv); err != nil {
+		return false, fmt.Errorf("error decoding %s: %w", file, err)
+	}
+
+	for _, message := range conv {
+		if strings.Contains(message.Role, searchString) || strings.Contains(message.Content, searchString) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
 var _ chatCompletionReceiver = &cachedCompletionStream{}
 
 type cachedCompletionStream struct {
