@@ -92,6 +92,24 @@ var (
 				config.Quiet = true
 			}
 
+			// Load model from Role if there is one
+			if config.Role != "" {
+				role, ok := config.Roles[config.Role]
+				if !ok {
+					return modsError{
+						err:    fmt.Errorf("role %q does not exist", config.Role),
+						reason: "Could not use role",
+					}
+				}
+
+				// TODO: is this the best way to determine if a model was
+				// passed in on the CLI? That should override the config role
+				// model. This won't work if the user passes in the default.
+				if config.Model == config.DefaultModel && role.Model != "" {
+					config.Model = role.Model
+				}
+			}
+
 			for {
 				if isNoArgs() && isInputTTY() && config.openEditor {
 					prompt, err := prefixFromEditor()
