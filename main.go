@@ -608,16 +608,44 @@ func deleteConversation(convo *Conversation) error {
 }
 
 func searchConversations() error {
-	conversations, err := db.Search(config.Search)
+	dbConversations, err := db.Search(config.Search)
 	if err != nil {
-		return modsError{err, "Couldn't search saves."}
+		return modsError{err, "Couldn't search saves"}
 	}
 
-	if len(conversations) == 0 {
+	// TODO: is this the right way to get the gob path?
+	gobIDs, err := cache.Search(config.Search, filepath.Join(config.CachePath, "conversations"))
+	if err != nil {
+		return modsError{err, "Couldn't search cache"}
+	}
+
+	gobConversations := make([]Conversation, 0, len(gobIDs))
+	for _, id := range gobIDs {
+		// We have to ensure unique IDs. This way only one loop is needed.
+		found := false
+		for _, d := range dbConversations {
+			if d.ID == id {
+				fmt.Printf("Conversation %s found in both DB and cache. Using DB.\n", id)
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			conv, err := db.Find(id)
+			if err != nil {
+				return modsError{err, fmt.Sprintf("Couldn't find conversation %s in DB", id)}
+			}
+			gobConversations = append(gobConversations, *conv)
+		}
+	}
+
+	if len(dbConversations) == 0 && len(gobConversations) == 0 {
 		fmt.Fprintln(os.Stderr, "No conversations found.")
 		return nil
 	}
 
+	conversations := append(dbConversations, gobConversations...)
 	if isInputTTY() && isOutputTTY() {
 		selectFromList(conversations)
 		return nil
