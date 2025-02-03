@@ -643,7 +643,6 @@ func searchConversations() error {
 		found := false
 		for _, d := range dbConversations {
 			if d.ID == id {
-				fmt.Printf("Conversation %s found in both DB and cache. Using DB.\n", id)
 				found = true
 				break
 			}
