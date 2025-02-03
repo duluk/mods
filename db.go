@@ -262,10 +262,10 @@ func (c *convoDB) Find(in string) (*Conversation, error) {
 }
 
 func (c *convoDB) Search(in string) ([]Conversation, error) {
-	var convos []Conversation
-	if err := c.db.Select(&convos, c.db.Rebind(`
+	var convoIDs []Conversation
+	if err := c.db.Select(&convoIDs, c.db.Rebind(`
 		SELECT
-		  *
+		 *
 		FROM
 		  conversations
 		WHERE
@@ -275,7 +275,7 @@ func (c *convoDB) Search(in string) ([]Conversation, error) {
 	`), "*"+in+"*"); err != nil {
 		return nil, fmt.Errorf("Search: %w", err)
 	}
-	return convos, nil
+	return convoIDs, nil
 }
 
 func (c *convoDB) List() ([]Conversation, error) {
