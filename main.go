@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 
+	"golang.org/x/term"
+
 	"github.com/atotto/clipboard"
 	timeago "github.com/caarlos0/timea.go"
 	tea "github.com/charmbracelet/bubbletea"
@@ -713,12 +715,37 @@ func listRoles() error {
 	return nil
 }
 
+func determineScreenSize() (int, int) {
+	width, height, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return 80, 24
+	}
+
+	return width, height
+}
+
 func makeOptions(conversations []Conversation) []huh.Option[string] {
 	opts := make([]huh.Option[string], 0, len(conversations))
 	for _, c := range conversations {
 		timea := stdoutStyles().Timeago.Render(timeago.Of(c.UpdatedAt))
 		left := stdoutStyles().SHA1.Render(c.ID[:sha1short])
-		right := stdoutStyles().ConversationList.Render(c.Title, timea)
+
+		// I think there's a bug in charmbracelet, somewhere in the rendering
+		// code that doesn't render these lists correctly if the line is longer
+		// than the screen width, eg when the title is too long. The result is
+		// that not all of the elements of the list are shown on the screen,
+		// but they can still be selected. I don't feel like trying to figure
+		// out where the bug is, so I'm just truncating the title to fit on the
+		// windows as best I can. That way, the list will at least show
+		// everything, or scroll properly.
+		width, _ := determineScreenSize()
+		adjWidth := width - len(timea) - len(left) - len(*c.Model)
+		adjTitle := c.Title
+		if len(adjTitle) > adjWidth {
+			adjTitle = adjTitle[:adjWidth] + "..."
+		}
+
+		right := stdoutStyles().ConversationList.Render(adjTitle, timea)
 		if c.Model != nil {
 			right += stdoutStyles().Comment.Render(*c.Model)
 		}
@@ -734,6 +761,7 @@ func selectFromList(conversations []Conversation) {
 			huh.NewSelect[string]().
 				Title("Conversations").
 				Value(&selected).
+				Height(len(conversations)).
 				Options(makeOptions(conversations)...),
 		),
 	).Run(); err != nil {
