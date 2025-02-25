@@ -25,7 +25,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20
 	github.com/muesli/mango-cobra v1.2.0
 	github.com/muesli/roff v0.1.0
-	github.com/muesli/termenv v0.15.3-0.20241212154518-8c990cd6cf4b
+	github.com/muesli/termenv v0.16.0
 	github.com/sashabaranov/go-openai v1.37.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6

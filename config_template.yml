@@ -93,6 +93,12 @@ apis:
         aliases: ["35"]
         max-input-chars: 12250
         fallback:
+      o1:
+        aliases: ["o1-preview"]
+        max-input-chars: 200000
+      o3-mini:
+        aliases: ["o1-preview"]
+        max-input-chars: 200000
       o1-preview:
         aliases: ["o1-preview"]
         max-input-chars: 128000
@@ -129,6 +135,9 @@ apis:
       o3-mini:
         aliases: ["o3m", "o3-mini"]
         max-input-chars: 128000
+      gemini-2.0-flash-001:
+        aliases: ["gm2f", "flash-2", "gemini-2-flash"]
+        max-input-chars: 4194304
   anthropic:
     base-url: https://api.anthropic.com/v1
     api-key:
@@ -152,13 +161,20 @@ apis:
       command-r:
         max-input-chars: 128000
   google:
-    models:
+    models: # https://ai.google.dev/gemini-api/docs/models/gemini
       gemini-1.5-pro-latest:
-        aliases: ["gemini"]
+        aliases: ["gmp", "gemini", "gemini-1.5-pro"]
         max-input-chars: 392000
       gemini-1.5-flash-latest:
-        aliases: ["flash"]
+        aliases: ["gmf", "flash", "gemini-1.5-flash"]
         max-input-chars: 392000
+      gemini-2.0-flash-001:
+        aliases: ["gm2f", "flash-2", "gemini-2-flash"]
+        max-input-chars: 4194304
+      gemini-2.0-flash-lite:
+        aliases: ["gm2fl", "flash-2-lite", "gemini-2-flash-lite"]
+        max-input-chars: 4194304
+
   ollama:
     base-url: http://localhost:11434/api
     models: # https://ollama.com/library
@@ -308,14 +324,16 @@ apis:
       open-mistral-nemo:
         aliases: ["mistral-nemo"]
         max-input-chars: 384000
+  # DeepSeek
+  # https://api-docs.deepseek.com
   deepseek:
     base-url: https://api.deepseek.com/
     api-key:
     api-key-env: DEEPSEEK_API_KEY
-    models: # https://platform.deepseek.com/api-docs/api/list-models/
+    models:
       deepseek-chat:
-        aliases: ["ds-chat"]
+        aliases: ["chat"]
         max-input-chars: 384000
-      deepseek-code:
-        aliases: ["ds-code"]
+      deepseek-reasoner:
+        aliases: ["r1"]
         max-input-chars: 384000
